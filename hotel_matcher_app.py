@@ -90,12 +90,7 @@ if uploaded_file:
                     8: [7, 8]
                 }.get(base_order, [])
 
-                # Exclude only the exact same row by index
                 subset = df[df.index != base_row.name]
-
-                # Debug info — optional
-                st.write(f"Processing hotel: {hotel_name}")
-                st.write(f"Initial subset size: {len(subset)}")
 
                 mask = (
                     (subset['State'] == base_row['State']) &
@@ -107,12 +102,9 @@ if uploaded_file:
                 )
 
                 filtered_subset = subset[mask]
-                st.write(f"Filtered subset size: {len(filtered_subset)}")
-
                 matching_rows = filtered_subset.drop_duplicates(
                     subset=['Project / Hotel Name', 'Owner Street Address', 'Owner Name/ LLC Name'], keep='first'
                 )
-                st.write(f"After dropping duplicates: {len(matching_rows)}")
 
                 match_columns = [
                     'Project / Hotel Name', 'State', 'Property County',
@@ -148,7 +140,7 @@ if uploaded_file:
                                 combined_row[prefix + col] = None
 
                     results_rows.append(combined_row)
-                    st.success(f"Found {len(matching_rows)} matching rows for '{hotel_name}'")
+
                 else:
                     combined_row = base_data.copy()
                     combined_row['Matching Results Count / Status'] = 'No_Match_Case'
@@ -157,7 +149,6 @@ if uploaded_file:
                         for col in all_columns:
                             combined_row[prefix + col] = None
                     results_rows.append(combined_row)
-                    st.warning(f"No matches found for '{hotel_name}'")
 
             except Exception as e:
                 st.error(f"❌ Error processing hotel '{hotel_name}': {e}")
@@ -181,10 +172,8 @@ if uploaded_file:
                 - Total matching result rows: `{total_matching_result_rows}`
             """)
 
-            # Show result dataframe
             st.dataframe(result_df)
 
-            # Excel download
             output = io.BytesIO()
             result_df.to_excel(output, index=False)
             st.download_button(
