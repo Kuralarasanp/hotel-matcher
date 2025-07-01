@@ -58,24 +58,16 @@ if uploaded_file:
     # Market Value Min and Max % inputs
     col1, col2 = st.columns(2)
     with col1:
-        mv_min_pct = st.number_input(
-            "🔽 Market Value Min Filter %", min_value=0.0, max_value=500.0, value=80.0, step=1.0
-        )
+        mv_min_pct = st.number_input("🔽 Market Value Min Filter %", min_value=0.0, max_value=500.0, value=80.0, step=1.0)
     with col2:
-        mv_max_pct = st.number_input(
-            "🔼 Market Value Max Filter %", min_value=mv_min_pct, max_value=500.0, value=120.0, step=1.0
-        )
+        mv_max_pct = st.number_input("🔼 Market Value Max Filter %", min_value=mv_min_pct, max_value=500.0, value=120.0, step=1.0)
 
     # VPR Min and Max % inputs
     col3, col4 = st.columns(2)
     with col3:
-        vpr_min_pct = st.number_input(
-            "🔽 VPR Min Filter %", min_value=0.0, max_value=500.0, value=80.0, step=1.0
-        )
+        vpr_min_pct = st.number_input("🔽 VPR Min Filter %", min_value=0.0, max_value=500.0, value=80.0, step=1.0)
     with col4:
-        vpr_max_pct = st.number_input(
-            "🔼 VPR Max Filter %", min_value=vpr_min_pct, max_value=500.0, value=120.0, step=1.0
-        )
+        vpr_max_pct = st.number_input("🔼 VPR Max Filter %", min_value=vpr_min_pct, max_value=500.0, value=120.0, step=1.0)
 
     if st.button("🚀 Run Matching"):
         results_rows = []
@@ -101,7 +93,7 @@ if uploaded_file:
                 # Exclude only the exact same row by index
                 subset = df[df.index != base_row.name]
 
-                # Debug info — can be commented out if desired
+                # Debug info — optional
                 st.write(f"Processing hotel: {hotel_name}")
                 st.write(f"Initial subset size: {len(subset)}")
 
@@ -172,9 +164,27 @@ if uploaded_file:
 
         if results_rows:
             result_df = pd.DataFrame(results_rows)
+
+            # ✅ Summary statistics
+            total_rows = len(df)
+            match_cases_with_results = result_df[result_df['Matching Results Count / Status'] != 'No_Match_Case'].shape[0]
+            total_matching_result_rows = 0
+            for i in range(1, 6):
+                col_prefix = f"Result {i} - Project / Hotel Name"
+                total_matching_result_rows += result_df[col_prefix].notna().sum()
+
             st.success("✅ Matching Completed")
+            st.markdown(f"""
+                ### 📈 Summary Report
+                - Total rows in uploaded file: `{total_rows}`
+                - Match Cases with results: `{match_cases_with_results}`
+                - Total matching result rows: `{total_matching_result_rows}`
+            """)
+
+            # Show result dataframe
             st.dataframe(result_df)
 
+            # Excel download
             output = io.BytesIO()
             result_df.to_excel(output, index=False)
             st.download_button(
