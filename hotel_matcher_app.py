@@ -15,7 +15,7 @@ hotel_class_map = {
     "Independent Hotel": 8
 }
 
-# Match functions
+# Match functions (you can keep or modify as needed)
 def get_least_one(df):
     return df.sort_values(['Market Value-2024', '2024 VPR'], ascending=[True, True]).head(1)
 
@@ -58,19 +58,32 @@ if uploaded_file:
     # Market Value Min and Max % inputs
     col1, col2 = st.columns(2)
     with col1:
-        mv_min_pct = st.number_input("🔽 Market Value Min Filter %", min_value=0.0, max_value=500.0, value=80.0, step=1.0)
+        mv_min_pct = st.number_input(
+            "🔽 Market Value Min Filter %", min_value=0.0, max_value=500.0, value=80.0, step=1.0
+        )
     with col2:
-        mv_max_pct = st.number_input("🔼 Market Value Max Filter %", min_value=mv_min_pct, max_value=500.0, value=120.0, step=1.0)
+        mv_max_pct = st.number_input(
+            "🔼 Market Value Max Filter %", min_value=mv_min_pct, max_value=500.0, value=120.0, step=1.0
+        )
 
     # VPR Min and Max % inputs
     col3, col4 = st.columns(2)
     with col3:
-        vpr_min_pct = st.number_input("🔽 VPR Min Filter %", min_value=0.0, max_value=500.0, value=80.0, step=1.0)
+        vpr_min_pct = st.number_input(
+            "🔽 VPR Min Filter %", min_value=0.0, max_value=500.0, value=80.0, step=1.0
+        )
     with col4:
-        vpr_max_pct = st.number_input("🔼 VPR Max Filter %", min_value=vpr_min_pct, max_value=500.0, value=120.0, step=1.0)
+        vpr_max_pct = st.number_input(
+            "🔼 VPR Max Filter %", min_value=vpr_min_pct, max_value=500.0, value=120.0, step=1.0
+        )
 
     if st.button("🚀 Run Matching"):
         results_rows = []
+
+        total_match_case_rows = 0
+        total_base_hotels_with_matches = 0
+
+        all_columns = [col for col in df.columns]
 
         for hotel_name in selected_hotels:
             try:
@@ -90,6 +103,7 @@ if uploaded_file:
                     8: [7, 8]
                 }.get(base_order, [])
 
+                # Exclude only the exact same row by index
                 subset = df[df.index != base_row.name]
 
                 mask = (
@@ -102,76 +116,47 @@ if uploaded_file:
                 )
 
                 filtered_subset = subset[mask]
-                matching_rows = filtered_subset.drop_duplicates(
-                    subset=['Project / Hotel Name', 'Owner Street Address', 'Owner Name/ LLC Name'], keep='first'
-                )
 
-                match_columns = [
-                    'Project / Hotel Name', 'State', 'Property County',
-                    'No. of Rooms', 'Market Value-2024', '2024 VPR',
-                    'Hotel Class', 'Hotel Class Order'
-                ]
-                all_columns = [col for col in df.columns if col != 'Hotel Class Order'] + ['Hotel Class Order']
-                max_results_per_row = 5
+                total_match_case_rows += len(filtered_subset)
 
-                base_data = base_row[match_columns].to_dict()
+                if not filtered_subset.empty:
+                    total_base_hotels_with_matches += 1
 
-                if not matching_rows.empty:
-                    nearest_3 = get_nearest_three(matching_rows, base_market_val, base_vpr)
-                    remaining_after_nearest = matching_rows[~matching_rows.index.isin(nearest_3.index)]
-                    least_1 = get_least_one(remaining_after_nearest)
-                    remaining_after_least = remaining_after_nearest[~remaining_after_nearest.index.isin(least_1.index)]
-                    top_1 = get_top_one(remaining_after_least)
+                    # Output one row per matched comparable with base hotel info
+                    for _, match_row in filtered_subset.iterrows():
+                        combined_row = {}
 
-                    selected_rows = pd.concat([nearest_3, least_1, top_1]).reset_index(drop=True)
-                    result_count = len(selected_rows)
-
-                    combined_row = base_data.copy()
-                    combined_row['Matching Results Count / Status'] = f"Total: {len(matching_rows)} | Selected: {result_count}"
-
-                    for idx in range(max_results_per_row):
-                        prefix = f"Result {idx + 1} - "
-                        if idx < result_count:
-                            match_row = selected_rows.iloc[idx]
-                            for col in all_columns:
-                                combined_row[prefix + col] = match_row[col]
-                        else:
-                            for col in all_columns:
-                                combined_row[prefix + col] = None
-
-                    results_rows.append(combined_row)
-
-                else:
-                    combined_row = base_data.copy()
-                    combined_row['Matching Results Count / Status'] = 'No_Match_Case'
-                    for idx in range(max_results_per_row):
-                        prefix = f"Result {idx + 1} - "
+                        # Base hotel info prefix: "Base - "
                         for col in all_columns:
-                            combined_row[prefix + col] = None
+                            combined_row[f"Base - {col}"] = base_row[col]
+
+                        # Matched comparable info prefix: "Match - "
+                        for col in all_columns:
+                            combined_row[f"Match - {col}"] = match_row[col]
+
+                        combined_row['Matching Results Count / Status'] = f"Total Matches for base hotel: {len(filtered_subset)}"
+                        results_rows.append(combined_row)
+                else:
+                    # If no match found, add a row for base hotel with no matches
+                    combined_row = {}
+                    for col in all_columns:
+                        combined_row[f"Base - {col}"] = base_row[col]
+                    for col in all_columns:
+                        combined_row[f"Match - {col}"] = None
+                    combined_row['Matching Results Count / Status'] = 'No_Match_Case'
                     results_rows.append(combined_row)
 
             except Exception as e:
                 st.error(f"❌ Error processing hotel '{hotel_name}': {e}")
 
+        # Show summary
+        st.markdown(f"**Total rows in file:** {len(df)}")
+        st.markdown(f"**Match Cases with results:** {total_base_hotels_with_matches}")
+        st.markdown(f"**Total matching result rows:** {total_match_case_rows}")
+
         if results_rows:
             result_df = pd.DataFrame(results_rows)
-
-            # ✅ Summary statistics
-            total_rows = len(df)
-            match_cases_with_results = result_df[result_df['Matching Results Count / Status'] != 'No_Match_Case'].shape[0]
-            total_matching_result_rows = 0
-            for i in range(1, 6):
-                col_prefix = f"Result {i} - Project / Hotel Name"
-                total_matching_result_rows += result_df[col_prefix].notna().sum()
-
             st.success("✅ Matching Completed")
-            st.markdown(f"""
-                ### 📈 Summary Report
-                - Total rows in uploaded file: `{total_rows}`
-                - Match Cases with results: `{match_cases_with_results}`
-                - Total matching result rows: `{total_matching_result_rows}`
-            """)
-
             st.dataframe(result_df)
 
             output = io.BytesIO()
@@ -179,6 +164,6 @@ if uploaded_file:
             st.download_button(
                 label="📥 Download Result as Excel",
                 data=output.getvalue(),
-                file_name="hotel_matching_result.xlsx",
+                file_name="hotel_matching_result_all_matches.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
