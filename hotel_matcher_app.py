@@ -59,12 +59,12 @@ if uploaded_file:
 
     df['Project / Hotel Name'] = df['Project / Hotel Name'].astype(str).str.strip()
 
-    # Keep duplicates — full list of hotel names
-    hotel_names = df['Project / Hotel Name'].dropna().astype(str).str.strip().tolist()
+    # Keep duplicates — full list of Property_Address
+    Property_Address = df['Property Address'].dropna().astype(str).str.strip().tolist()
 
     selected_hotels = st.multiselect(
-        "🏨 Select Project / Hotel Name(s)",
-        options=["[SELECT ALL]"] + hotel_names,
+        "🏨 Select Project / Property Address",
+        options=["[SELECT ALL]"] + Property_Address,
         default=["[SELECT ALL]"]
     )
 
