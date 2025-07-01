@@ -27,6 +27,7 @@ def get_nearest_three(df, target_value_mv, target_value_vpr):
     df['distance'] = ((df['Market Value-2024'] - target_value_mv) ** 2 + (df['2024 VPR'] - target_value_vpr) ** 2) ** 0.5
     return df.sort_values('distance').head(3).drop(columns='distance')
 
+# Streamlit UI
 st.title("🏨 Hotel Comparable Matcher Tool")
 
 uploaded_file = st.file_uploader("📤 Upload Excel File", type=['xlsx'])
@@ -54,11 +55,27 @@ if uploaded_file:
     if "[SELECT ALL]" in selected_hotels:
         selected_hotels = hotel_names
 
-    # Hardcoded filter ranges matching your batch script
-    mv_min_pct = 80  # 80%
-    mv_max_pct = 120 # 120%
-    vpr_min_pct = 80
-    vpr_max_pct = 120
+    # Market Value Min and Max % inputs
+    col1, col2 = st.columns(2)
+    with col1:
+        mv_min_pct = st.number_input(
+            "🔽 Market Value Min Filter %", min_value=0.0, max_value=500.0, value=80.0, step=1.0
+        )
+    with col2:
+        mv_max_pct = st.number_input(
+            "🔼 Market Value Max Filter %", min_value=mv_min_pct, max_value=500.0, value=120.0, step=1.0
+        )
+
+    # VPR Min and Max % inputs
+    col3, col4 = st.columns(2)
+    with col3:
+        vpr_min_pct = st.number_input(
+            "🔽 VPR Min Filter %", min_value=0.0, max_value=500.0, value=80.0, step=1.0
+        )
+    with col4:
+        vpr_max_pct = st.number_input(
+            "🔼 VPR Max Filter %", min_value=vpr_min_pct, max_value=500.0, value=120.0, step=1.0
+        )
 
     if st.button("🚀 Run Matching"):
         results_rows = []
@@ -84,7 +101,7 @@ if uploaded_file:
                 # Exclude only the exact same row by index
                 subset = df[df.index != base_row.name]
 
-                # Debug info — you can comment these out later
+                # Debug info — can be commented out if desired
                 st.write(f"Processing hotel: {hotel_name}")
                 st.write(f"Initial subset size: {len(subset)}")
 
