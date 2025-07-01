@@ -58,9 +58,7 @@ if uploaded_file:
     df['Hotel Class Order'] = df['Hotel Class Order'].astype(int)
 
     # Unique identifier
-    df['Hotel Identifier'] = df['Project / Hotel Name'] + " | " + df['Owner Name/ LLC Name'] + " | " + df['Owner Street Address']
-    hotel_ids = sorted(df['Hotel Identifier'].unique())
-
+    hotel_ids = sorted(df['Hotel Identifier']
     selected_hotels = st.multiselect(
         "🏨 Select Hotel(s)",
         options=["[SELECT ALL]"] + hotel_ids,
