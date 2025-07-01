@@ -27,7 +27,6 @@ def get_nearest_three(df, target_value_mv, target_value_vpr):
     df['distance'] = ((df['Market Value-2024'] - target_value_mv) ** 2 + (df['2024 VPR'] - target_value_vpr) ** 2) ** 0.5
     return df.sort_values('distance').head(3).drop(columns='distance')
 
-# Streamlit UI
 st.title("🏨 Hotel Comparable Matcher Tool")
 
 uploaded_file = st.file_uploader("📤 Upload Excel File", type=['xlsx'])
@@ -52,31 +51,14 @@ if uploaded_file:
         options=["[SELECT ALL]"] + list(hotel_names),
         default=["[SELECT ALL]"]
     )
-
     if "[SELECT ALL]" in selected_hotels:
         selected_hotels = hotel_names
 
-    # Separate min and max input fields for Market Value Filter %
-    col1, col2 = st.columns(2)
-    with col1:
-        mv_min = st.number_input("🔽 Market Value Min Filter %", min_value=0.0, max_value=500.0, value=80.0, step=1.0)
-    with col2:
-        mv_max = st.number_input("🔼 Market Value Max Filter %", min_value=mv_min, max_value=500.0, value=120.0, step=1.0)
-
-    # Separate min and max input fields for VPR Filter %
-    col3, col4 = st.columns(2)
-    with col3:
-        vpr_min = st.number_input("🔽 VPR Min Filter %", min_value=0.0, max_value=500.0, value=80.0, step=1.0)
-    with col4:
-        vpr_max = st.number_input("🔼 VPR Max Filter %", min_value=vpr_min, max_value=500.0, value=120.0, step=1.0)
-
-    match_columns = [
-        'Project / Hotel Name', 'State', 'Property County',
-        'No. of Rooms', 'Market Value-2024', '2024 VPR',
-        'Hotel Class', 'Hotel Class Order'
-    ]
-    all_columns = [col for col in df.columns if col != 'Hotel Class Order'] + ['Hotel Class Order']
-    max_results_per_row = 5
+    # Hardcoded filter ranges matching your batch script
+    mv_min_pct = 80  # 80%
+    mv_max_pct = 120 # 120%
+    vpr_min_pct = 80
+    vpr_max_pct = 120
 
     if st.button("🚀 Run Matching"):
         results_rows = []
@@ -99,20 +81,37 @@ if uploaded_file:
                     8: [7, 8]
                 }.get(base_order, [])
 
-                subset = df[df['Project / Hotel Name'] != hotel_name]
+                # Exclude only the exact same row by index
+                subset = df[df.index != base_row.name]
+
+                # Debug info — you can comment these out later
+                st.write(f"Processing hotel: {hotel_name}")
+                st.write(f"Initial subset size: {len(subset)}")
 
                 mask = (
                     (subset['State'] == base_row['State']) &
                     (subset['Property County'] == base_row['Property County']) &
                     (subset['No. of Rooms'] < base_row['No. of Rooms']) &
-                    (subset['Market Value-2024'].between(base_market_val * (mv_min / 100), base_market_val * (mv_max / 100))) &
-                    (subset['2024 VPR'].between(base_vpr * (vpr_min / 100), base_vpr * (vpr_max / 100))) &
+                    (subset['Market Value-2024'].between(base_market_val * (mv_min_pct / 100), base_market_val * (mv_max_pct / 100))) &
+                    (subset['2024 VPR'].between(base_vpr * (vpr_min_pct / 100), base_vpr * (vpr_max_pct / 100))) &
                     (subset['Hotel Class Order'].isin(allowed_orders))
                 )
 
-                matching_rows = subset[mask].drop_duplicates(
+                filtered_subset = subset[mask]
+                st.write(f"Filtered subset size: {len(filtered_subset)}")
+
+                matching_rows = filtered_subset.drop_duplicates(
                     subset=['Project / Hotel Name', 'Owner Street Address', 'Owner Name/ LLC Name'], keep='first'
                 )
+                st.write(f"After dropping duplicates: {len(matching_rows)}")
+
+                match_columns = [
+                    'Project / Hotel Name', 'State', 'Property County',
+                    'No. of Rooms', 'Market Value-2024', '2024 VPR',
+                    'Hotel Class', 'Hotel Class Order'
+                ]
+                all_columns = [col for col in df.columns if col != 'Hotel Class Order'] + ['Hotel Class Order']
+                max_results_per_row = 5
 
                 base_data = base_row[match_columns].to_dict()
 
@@ -140,6 +139,7 @@ if uploaded_file:
                                 combined_row[prefix + col] = None
 
                     results_rows.append(combined_row)
+                    st.success(f"Found {len(matching_rows)} matching rows for '{hotel_name}'")
                 else:
                     combined_row = base_data.copy()
                     combined_row['Matching Results Count / Status'] = 'No_Match_Case'
@@ -148,6 +148,7 @@ if uploaded_file:
                         for col in all_columns:
                             combined_row[prefix + col] = None
                     results_rows.append(combined_row)
+                    st.warning(f"No matches found for '{hotel_name}'")
 
             except Exception as e:
                 st.error(f"❌ Error processing hotel '{hotel_name}': {e}")
