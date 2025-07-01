@@ -56,9 +56,19 @@ if uploaded_file:
     if "[SELECT ALL]" in selected_hotels:
         selected_hotels = hotel_names
 
-    # Slider inputs for min and max % filters
-    mv_min, mv_max = st.slider("📊 Market Value Range (%)", 0, 200, (80, 120), step=1)
-    vpr_min, vpr_max = st.slider("📊 VPR Range (%)", 0, 200, (80, 120), step=1)
+    # Separate min and max input fields for Market Value Filter %
+    col1, col2 = st.columns(2)
+    with col1:
+        mv_min = st.number_input("🔽 Market Value Min Filter %", min_value=0.0, max_value=500.0, value=80.0, step=1.0)
+    with col2:
+        mv_max = st.number_input("🔼 Market Value Max Filter %", min_value=mv_min, max_value=500.0, value=120.0, step=1.0)
+
+    # Separate min and max input fields for VPR Filter %
+    col3, col4 = st.columns(2)
+    with col3:
+        vpr_min = st.number_input("🔽 VPR Min Filter %", min_value=0.0, max_value=500.0, value=80.0, step=1.0)
+    with col4:
+        vpr_max = st.number_input("🔼 VPR Max Filter %", min_value=vpr_min, max_value=500.0, value=120.0, step=1.0)
 
     match_columns = [
         'Project / Hotel Name', 'State', 'Property County',
