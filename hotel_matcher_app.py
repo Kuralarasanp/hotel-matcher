@@ -46,7 +46,12 @@ if uploaded_file:
     df = df.dropna(subset=['Hotel Class Order'])
     df['Hotel Class Order'] = df['Hotel Class Order'].astype(int)
 
-    hotel_names = sorted(df['Project / Hotel Name'&'Owner Name/ LLC Name'&'Owner Street Address'].dropna().unique())
+    # Combine columns into a single string for uniqueness
+    combined = df[['Project / Hotel Name', 'Owner Name/ LLC Name', 'Owner Street Address']].dropna()
+    combined_str = combined.apply(lambda row: f"{row['Project / Hotel Name']} | {row['Owner Name/ LLC Name']} | {row['Owner Street Address']}", axis=1)
+
+    hotel_names = sorted(combined_str.unique())
+
     selected_hotels = st.multiselect(
         "🏨 Select Project / Hotel Name(s)",
         options=["[SELECT ALL]"] + list(hotel_names),
