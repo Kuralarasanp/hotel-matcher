@@ -26,7 +26,7 @@ allowed_orders_map = {
     8: [7, 8]
 }
 
-# Match functions
+# Matching logic helpers
 def get_least_one(df):
     return df.sort_values(['Market Value-2024', '2024 VPR'], ascending=[True, True]).head(1)
 
@@ -35,10 +35,10 @@ def get_top_one(df):
 
 def get_nearest_three(df, target_mv, target_vpr):
     df = df.copy()
-    df['distance'] = ((df['Market Value-2024'] - target_mv) ** 2 + (df['2024 VPR'] - target_vpr) ** 2) ** 0.5
+    df['distance'] = np.sqrt((df['Market Value-2024'] - target_mv) ** 2 + (df['2024 VPR'] - target_vpr) ** 2)
     return df.sort_values('distance').head(3).drop(columns='distance')
 
-# UI
+# Streamlit UI
 st.title("🏨 Hotel Comparable Matcher Tool")
 
 uploaded_file = st.file_uploader("📤 Upload Excel File", type=['xlsx'])
@@ -47,7 +47,7 @@ if uploaded_file:
     df = pd.read_excel(uploaded_file)
     df.columns = [col.strip() for col in df.columns]
 
-    # Data cleaning
+    # Clean and preprocess
     cols_to_numeric = ['No. of Rooms', 'Market Value-2024', '2024 VPR']
     for col in cols_to_numeric:
         df[col] = pd.to_numeric(df[col], errors='coerce')
@@ -57,30 +57,37 @@ if uploaded_file:
     df = df.dropna(subset=['Hotel Class Order'])
     df['Hotel Class Order'] = df['Hotel Class Order'].astype(int)
 
-    # Unique identifier
-    hotel_ids = sorted(df['Hotel Identifier']
+    df['Project / Hotel Name'] = df['Project / Hotel Name'].astype(str).str.strip()
+
+    # Keep duplicates — full list of hotel names
+    hotel_names = df['Project / Hotel Name'].dropna().astype(str).str.strip().tolist()
+
     selected_hotels = st.multiselect(
-        "🏨 Select Hotel(s)",
-        options=["[SELECT ALL]"] + hotel_ids,
+        "🏨 Select Project / Hotel Name(s)",
+        options=["[SELECT ALL]"] + hotel_names,
         default=["[SELECT ALL]"]
     )
 
     if "[SELECT ALL]" in selected_hotels:
-        selected_hotels = hotel_ids
+        selected_rows = df.copy()
+    else:
+        selected_rows = df[df['Project / Hotel Name'].isin(selected_hotels)]
 
-    # Filters
+    # Market Value filters
     col1, col2 = st.columns(2)
     with col1:
         mv_min = st.number_input("🔽 Market Value Min Filter %", 0.0, 500.0, 80.0, 1.0)
     with col2:
         mv_max = st.number_input("🔼 Market Value Max Filter %", mv_min, 500.0, 120.0, 1.0)
 
+    # VPR filters
     col3, col4 = st.columns(2)
     with col3:
         vpr_min = st.number_input("🔽 VPR Min Filter %", 0.0, 500.0, 80.0, 1.0)
     with col4:
         vpr_max = st.number_input("🔼 VPR Max Filter %", vpr_min, 500.0, 120.0, 1.0)
 
+    # Max results
     max_results_per_row = st.slider("🔢 Max Matches Per Hotel", 1, 10, 5)
 
     match_columns = [
@@ -94,15 +101,14 @@ if uploaded_file:
         results_rows = []
 
         with st.spinner("🔍 Matching hotels, please wait..."):
-            for hotel_id in selected_hotels:
+            for _, base_row in selected_rows.iterrows():
                 try:
-                    base_row = df[df['Hotel Identifier'] == hotel_id].iloc[0]
                     base_market_val = base_row['Market Value-2024']
                     base_vpr = base_row['2024 VPR']
                     base_order = base_row['Hotel Class Order']
                     allowed_orders = allowed_orders_map.get(base_order, [])
 
-                    subset = df[df['Hotel Identifier'] != hotel_id]
+                    subset = df[df.index != base_row.name]
 
                     mask = (
                         (subset['State'] == base_row['State']) &
@@ -126,8 +132,8 @@ if uploaded_file:
                         remaining = remaining[~remaining.index.isin(least_1.index)]
                         top_1 = get_top_one(remaining)
 
-                        selected_rows = pd.concat([nearest_3, least_1, top_1]).drop_duplicates().reset_index(drop=True)
-                        result_count = min(len(selected_rows), max_results_per_row)
+                        selected_rows_final = pd.concat([nearest_3, least_1, top_1]).drop_duplicates().reset_index(drop=True)
+                        result_count = min(len(selected_rows_final), max_results_per_row)
 
                         combined_row = base_data.copy()
                         combined_row['Matching Results Count / Status'] = f"Total: {len(matching_rows)} | Selected: {result_count}"
@@ -135,7 +141,7 @@ if uploaded_file:
                         for idx in range(max_results_per_row):
                             prefix = f"Result {idx + 1} - "
                             if idx < result_count:
-                                match_row = selected_rows.iloc[idx]
+                                match_row = selected_rows_final.iloc[idx]
                                 for col in all_columns:
                                     combined_row[prefix + col] = match_row[col]
                             else:
@@ -153,7 +159,7 @@ if uploaded_file:
                         results_rows.append(combined_row)
 
                 except Exception as e:
-                    st.error(f"❌ Error processing hotel '{hotel_id}': {e}")
+                    st.error(f"❌ Error processing hotel '{base_row['Project / Hotel Name']}': {e}")
 
         if results_rows:
             result_df = pd.DataFrame(results_rows)
