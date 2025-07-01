@@ -56,8 +56,9 @@ if uploaded_file:
     if "[SELECT ALL]" in selected_hotels:
         selected_hotels = hotel_names
 
-    mv_filter_pct = st.number_input("🔢 Market Value Filter %", min_value=0.0, value=20.0, step=1.0)
-    vpr_filter_pct = st.number_input("🔢 VPR Filter %", min_value=0.0, value=20.0, step=1.0)
+    # Slider inputs for min and max % filters
+    mv_min, mv_max = st.slider("📊 Market Value Range (%)", 0, 200, (80, 120), step=1)
+    vpr_min, vpr_max = st.slider("📊 VPR Range (%)", 0, 200, (80, 120), step=1)
 
     match_columns = [
         'Project / Hotel Name', 'State', 'Property County',
@@ -94,8 +95,8 @@ if uploaded_file:
                     (subset['State'] == base_row['State']) &
                     (subset['Property County'] == base_row['Property County']) &
                     (subset['No. of Rooms'] < base_row['No. of Rooms']) &
-                    (subset['Market Value-2024'].between(base_market_val * (1 - mv_filter_pct/100), base_market_val * (1 + mv_filter_pct/100))) &
-                    (subset['2024 VPR'].between(base_vpr * (1 - vpr_filter_pct/100), base_vpr * (1 + vpr_filter_pct/100))) &
+                    (subset['Market Value-2024'].between(base_market_val * (mv_min / 100), base_market_val * (mv_max / 100))) &
+                    (subset['2024 VPR'].between(base_vpr * (vpr_min / 100), base_vpr * (vpr_max / 100))) &
                     (subset['Hotel Class Order'].isin(allowed_orders))
                 )
 
