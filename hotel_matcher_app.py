@@ -57,13 +57,13 @@ if uploaded_file:
     df = df.dropna(subset=['Hotel Class Order'])
     df['Hotel Class Order'] = df['Hotel Class Order'].astype(int)
 
-    df['Project / Hotel Name'] = df['Project / Hotel Name'].astype(str).str.strip()
+    df['Property Address'] = df['Property Address'].astype(str).str.strip()
 
     # Keep duplicates — full list of Property_Address
-    Property_Address = df['Project / Hotel Name'].dropna().astype(str).str.strip().tolist()
+    Property_Address = df['Property Address'].dropna().astype(str).str.strip().tolist()
 
     selected_hotels = st.multiselect(
-        "🏨 Select Project / Hotel Name",
+        "🏨 Select Property Address",
         options=["[SELECT ALL]"] + Property_Address,
         default=["[SELECT ALL]"]
     )
@@ -71,7 +71,7 @@ if uploaded_file:
     if "[SELECT ALL]" in selected_hotels:
         selected_rows = df.copy()
     else:
-        selected_rows = df[df['Project / Hotel Name'].isin(selected_hotels)]
+        selected_rows = df[df['Property Address'].isin(selected_hotels)]
 
     # Market Value filters
     col1, col2 = st.columns(2)
@@ -91,7 +91,7 @@ if uploaded_file:
     max_results_per_row = st.slider("🔢 Max Matches Per Hotel", 1, 10, 5)
 
     match_columns = [
-        'Project / Hotel Name', 'State', 'Property County',
+        'Property Address', 'State', 'Property County',
         'No. of Rooms', 'Market Value-2024', '2024 VPR',
         'Hotel Class', 'Hotel Class Order'
     ]
@@ -159,7 +159,7 @@ if uploaded_file:
                         results_rows.append(combined_row)
 
                 except Exception as e:
-                    st.error(f"❌ Error processing hotel '{base_row['Project / Hotel Name']}': {e}")
+                    st.error(f"❌ Error processing hotel '{base_row['Property Address']}': {e}")
 
         if results_rows:
             result_df = pd.DataFrame(results_rows)
