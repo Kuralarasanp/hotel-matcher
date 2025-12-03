@@ -39,7 +39,7 @@ def get_nearest_three(df, target_mv, target_vpr):
     return df.sort_values('distance').head(3).drop(columns='distance')
 
 # Streamlit UI
-st.title("🏨 Hotel Comparable Matcher Tool")
+st.title("🏨 Hotel Comparable Matcher Tool 1")
 
 uploaded_file = st.file_uploader("📤 Upload Excel File", type=['xlsx'])
 
@@ -179,3 +179,4 @@ if uploaded_file:
                 file_name="hotel_matching_result.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
+
